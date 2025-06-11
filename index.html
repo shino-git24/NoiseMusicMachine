@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noise Machine</title>
+    <style>
+        /* === CSS === */
+        body {
+            background-color: #111;
+            color: #eee;
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #noise-machine {
+            background-color: #333;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 20px 30px;
+            width: 300px;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: #fff;
+            letter-spacing: 2px;
+        }
+        .control {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 8px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #d9534f;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        button.on {
+            background-color: #5cb85c;
+        }
+        /* ★追加: ビジュアライザー(canvas)のスタイル */
+        #visualizer {
+            background-color: #000;
+            border: 1px solid #444;
+            width: 100%;
+            height: 100px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="noise-machine">
+        <h1>NOISE MACHINE</h1>
+
+        <div class="control">
+            <canvas id="visualizer"></canvas>
+        </div>
+
+        <div class="control">
+            <button id="power-switch">POWER OFF</button>
+        </div>
+
+        <div class="control">
+            <label for="volume-slider">VOLUME</label>
+            <input type="range" id="volume-slider" min="0" max="1" value="0.5" step="0.01">
+        </div>
+
+        <div class="control">
+            <label for="distortion-slider">DISTORTION</label>
+            <input type="range" id="distortion-slider" min="0" max="1000" value="0" step="1">
+        </div>
+    </div>
+
+<script>
+    // === JavaScript (Web Audio API) ===
+
+    let audioContext, whiteNoiseNode, driveNode, distortionNode, gainNode, analyserNode;
+    let isPowerOn = false;
+    let animationFrameId;
+
+    const powerSwitch = document.getElementById('power-switch');
+    const volumeSlider = document.getElementById('volume-slider');
+    const distortionSlider = document.getElementById('distortion-slider');
+    const visualizerCanvas = document.getElementById('visualizer');
+    const canvasCtx = visualizerCanvas.getContext('2d');
+
+    powerSwitch.addEventListener('click', () => {
+        if (!isPowerOn) {
+            if (!audioContext) { setupAudio(); }
+            audioContext.resume();
+            isPowerOn = true;
+            powerSwitch.textContent = 'POWER ON';
+            powerSwitch.classList.add('on');
+            drawWaveform();
+        } else {
+            audioContext.suspend();
+            isPowerOn = false;
+            powerSwitch.textContent = 'POWER OFF';
+            powerSwitch.classList.remove('on');
+            cancelAnimationFrame(animationFrameId);
+        }
+    });
+
+    volumeSlider.addEventListener('input', (event) => {
+        if (gainNode) { gainNode.gain.value = parseFloat(event.target.value); }
+    });
+
+    // ★★★ ドライブ機能を完全に復活させた最終バージョン ★★★
+    distortionSlider.addEventListener('input', (event) => {
+        if (distortionNode && driveNode) {
+            const amount = parseInt(event.target.value);
+            
+            // ドライブ（入力ゲイン）をスライダーと連動させる
+            const driveValue = 1 + (amount / 1000) * 49;
+            driveNode.gain.value = driveValue; 
+
+            // 歪みのカーブを更新する
+            distortionNode.curve = makeDistortionCurve(amount);
+        }
+    });
+
+    function setupAudio() {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const bufferSize = 2 * audioContext.sampleRate;
+        const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
+        whiteNoiseNode = audioContext.createBufferSource();
+        whiteNoiseNode.buffer = noiseBuffer;
+        whiteNoiseNode.loop = true;
+        
+        driveNode = audioContext.createGain();
+        driveNode.gain.value = 1; // 初期値は1
+        
+        distortionNode = audioContext.createWaveShaper();
+        distortionNode.oversample = '4x';
+        distortionNode.curve = makeDistortionCurve(parseInt(distortionSlider.value));
+
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = parseFloat(volumeSlider.value);
+
+        analyserNode = audioContext.createAnalyser();
+        analyserNode.fftSize = 2048;
+
+        whiteNoiseNode.connect(driveNode);
+        driveNode.connect(distortionNode);
+        distortionNode.connect(gainNode);
+        gainNode.connect(analyserNode);
+        analyserNode.connect(audioContext.destination);
+
+        whiteNoiseNode.start();
+    }
+    
+    function drawWaveform() {
+        animationFrameId = requestAnimationFrame(drawWaveform);
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserNode.getByteTimeDomainData(dataArray);
+        canvasCtx.fillStyle = '#000000';
+        canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = '#00ff00';
+        canvasCtx.beginPath();
+        const sliceWidth = visualizerCanvas.width * 1.0 / bufferLength;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            const y = v * visualizerCanvas.height / 2;
+            if (i === 0) { canvasCtx.moveTo(x, y); } else { canvasCtx.lineTo(x, y); }
+            x += sliceWidth;
+        }
+        canvasCtx.lineTo(visualizerCanvas.width, visualizerCanvas.height / 2);
+        canvasCtx.stroke();
+    }
+
+    // ★★★ 歪みの方式をtanh関数に戻す ★★★
+    function makeDistortionCurve(amount) {
+        if (amount === 0) { return null; }
+        const n_samples = 44100;
+        const curve = new Float32Array(n_samples);
+        
+        // amountをkという名前にして、歪みの強さとして使う
+        const k = amount / 10; // 少し調整して変化を滑らかに
+
+        for (let i = 0; i < n_samples; ++i) {
+            const x = i * 2 / n_samples - 1;
+            // tanh関数を使って波形を変形させる
+            curve[i] = Math.tanh(x * k);
+        }
+        return curve;
+    }
+</script>
+
+</body>
+</html>
