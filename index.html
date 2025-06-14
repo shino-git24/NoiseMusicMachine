@@ -12,30 +12,35 @@
             font-family: sans-serif;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
+            align-items: flex-start;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px 0; /* 上下の余白を詰める */
+            box-sizing: border-box;
         }
         #noise-machine {
             background-color: #333;
             border: 2px solid #555;
             border-radius: 10px;
-            padding: 20px 30px;
+            padding: 15px 25px; /* 内側の余白を詰める */
             width: 300px;
         }
         h1 {
             text-align: center;
             margin-top: 0;
+            margin-bottom: 15px; /* 下の余白を詰める */
             color: #fff;
             letter-spacing: 2px;
+            font-size: 1.8em; /* 文字サイズを少し小さく */
         }
         .control {
-            margin-bottom: 20px;
+            margin-bottom: 12px; /* 各セクションの余白を詰める */
             display: flex;
             flex-direction: column;
         }
         label {
-            margin-bottom: 8px;
+            margin-bottom: 5px; /* ラベル下の余白を詰める */
+            font-size: 0.9em;   /* 文字サイズを少し小さく */
         }
         input[type="range"] {
             width: 100%;
@@ -130,7 +135,11 @@
     <div id="noise-machine">
         <h1>NOISE MACHINE</h1>
 
-        <div class="control">
+    <div class="control">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <label style="margin-bottom: 0;">VISUALIZER</label>
+                <button id="visualizer-toggle" class="filter-type active" style="width: auto; padding: 2px 10px; font-size: 0.8em;">ON</button>
+            </div>
             <canvas id="visualizer"></canvas>
         </div>
 
@@ -147,9 +156,37 @@
             </div>
         </div>
 
+        <div class="control" id="oscillator-section">
+            <label>OSCILLATOR</label>
+            <button id="osc-power-switch">OSC OFF</button>
+            <div id="osc-controls" style="margin-top: 15px; display: none;">
+                <label>OSC TYPE</label>
+                <div id="osc-type-buttons" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <button class="osc-type noise-type active" data-type="sawtooth">SAW</button>
+                    <button class="osc-type noise-type" data-type="square">SQUARE</button>
+                    <button class="osc-type noise-type" data-type="triangle">TRIANGLE</button>
+                </div>
+                <label for="osc-frequency-slider">FREQUENCY (20-2000Hz)</label>
+                <input type="range" id="osc-frequency-slider" min="20" max="2000" value="440" step="1">
+                <label for="osc-volume-slider" style="margin-top: 10px;">VOLUME</label>
+                <input type="range" id="osc-volume-slider" min="0" max="0.5" value="0" step="0.01">
+            </div>
+        </div>
+
         <div class="control">
             <label for="volume-slider">VOLUME</label>
             <input type="range" id="volume-slider" min="0" max="1" value="0.5" step="0.01">
+        </div>
+
+        <div class="control" id="envelope-section">
+            <label>AMPLITUDE ENVELOPE</label>
+            <button id="hit-button" style="padding: 20px; font-size: 1.5em; font-weight: bold; background-color: #ff8c00; color: white; border: none; border-radius: 5px; cursor: pointer;">HIT</button>
+            <div style="margin-top: 15px;">
+                <label for="attack-slider">ATTACK</label>
+                <input type="range" id="attack-slider" min="0.01" max="2" value="0.01" step="0.01">
+                <label for="decay-slider" style="margin-top: 10px;">DECAY</label>
+                <input type="range" id="decay-slider" min="0.01" max="3" value="1" step="0.01">
+            </div>
         </div>
 
         <div class="control" id="filter-section">
@@ -174,6 +211,28 @@
 
         </div>
 
+    <div class="control" id="lfo-section">
+            <label>LFO (LOW FREQUENCY OSCILLATOR)</label>
+            <div style="margin-top: 10px;">
+                <label>TARGET</label>
+                <div id="lfo-target-buttons" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <button class="lfo-target filter-type active" data-target="none">OFF</button>
+                    <button class="lfo-target filter-type" data-target="filterFrequency">FILTER FREQ</button>
+                    <button class="lfo-target filter-type" data-target="oscFrequency">OSC FREQ</button>
+                </div>
+                <label for="lfo-rate-slider">RATE (0.1 - 20 Hz)</label>
+                <input type="range" id="lfo-rate-slider" min="0.1" max="20" value="5" step="0.1">
+                <label for="lfo-depth-slider" style="margin-top: 10px;">DEPTH</label>
+                <input type="range" id="lfo-depth-slider" min="0" max="5000" value="0" step="1">
+                <label style="margin-top: 10px;">LFO TYPE</label>
+                <div id="lfo-type-buttons" style="display: flex; justify-content: space-between; margin-top: 5px;">
+                    <button class="lfo-type noise-type active" data-type="sine">SINE</button>
+                    <button class="lfo-type noise-type" data-type="square">SQUARE</button>
+                    <button class="lfo-type noise-type" data-type="sawtooth">SAW</button>
+                </div>
+            </div>
+        </div>
+
         <div class="control">
             <label for="feedback-slider">FEEDBACK</label>
             <input type="range" id="feedback-slider" min="0" max="0.99" value="0" step="0.01">
@@ -194,13 +253,19 @@
 <script>
     // === JavaScript (Web Audio API) ===
 
-    let audioContext, whiteNoiseNode, driveNode, distortionNode, filterNode, feedbackGainNode, delayNode, gainNode, limiterNode, analyserNode;
+    let audioContext, whiteNoiseNode, driveNode, distortionNode, filterNode, feedbackGainNode, delayNode, gainNode, limiterNode, analyserNode,
+    oscillatorNode, oscillatorGainNode,
+    lfoNode, lfoDepthNode,
+    envelopeGainNode; // ★ エンベロープ用のGainNodeを追加
     let noiseBuffers = {};
     let currentNoiseType = 'white';
     let mediaRecorder, recorderDestinationNode, recordedChunks = [];
     let isRecording = false;
+    let isOscOn = false;
+    let currentLfoTarget = 'none';
 
     let isPowerOn = false;
+    let isVisualizerOn = true; // ビジュアライザーのON/OFF状態
     let animationFrameId;
 
     const powerSwitch = document.getElementById('power-switch');
@@ -216,7 +281,10 @@
             isPowerOn = true;
             powerSwitch.textContent = 'POWER ON';
             powerSwitch.classList.add('on');
-            drawWaveform();
+            // ビジュアライザーがON設定の時だけ描画を開始する
+            if (isVisualizerOn) {
+                drawWaveform();
+            }
         } else {
             audioContext.suspend();
             isPowerOn = false;
@@ -350,7 +418,7 @@
         return buffer;
     }
 
-    function setupAudio() {
+function setupAudio() {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
         noiseBuffers.white = createNoiseBuffer('white');
@@ -392,30 +460,49 @@
         analyserNode = audioContext.createAnalyser();
         analyserNode.fftSize = 2048;
 
-        // 録音用の出力先ノードを作成
         recorderDestinationNode = audioContext.createMediaStreamDestination();
+
+        oscillatorNode = audioContext.createOscillator();
+        oscillatorNode.type = 'sawtooth';
+        oscillatorNode.frequency.value = 440;
+        
+        oscillatorGainNode = audioContext.createGain();
+        oscillatorGainNode.gain.value = 0;
+
+        lfoNode = audioContext.createOscillator();
+        lfoNode.type = 'sine';
+        lfoNode.frequency.value = 5;
+
+        lfoDepthNode = audioContext.createGain();
+        lfoDepthNode.gain.value = 0;
+
+        lfoNode.connect(lfoDepthNode);
 
         // --- ノードの接続 ---
         whiteNoiseNode.connect(driveNode);
+        oscillatorNode.connect(oscillatorGainNode);
+        oscillatorGainNode.connect(driveNode);
+
         driveNode.connect(distortionNode);
         distortionNode.connect(filterNode);
         filterNode.connect(gainNode);
+        
         gainNode.connect(limiterNode);
         
-        // リミッターからの出力をスピーカーと録音先の両方に分岐させる
-        limiterNode.connect(analyserNode); // スピーカーへの経路
+        limiterNode.connect(analyserNode);
         analyserNode.connect(audioContext.destination);
-        limiterNode.connect(recorderDestinationNode); // 録音機への経路
+        limiterNode.connect(recorderDestinationNode);
 
         filterNode.connect(feedbackGainNode);
         feedbackGainNode.connect(delayNode);
         delayNode.connect(driveNode);
 
         whiteNoiseNode.start();
+        oscillatorNode.start();
+        lfoNode.start();
     }
     
     function drawWaveform() {
-        animationFrameId = requestAnimationFrame(drawWaveform);
         const bufferLength = analyserNode.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyserNode.getByteTimeDomainData(dataArray);
@@ -434,6 +521,9 @@
         }
         canvasCtx.lineTo(visualizerCanvas.width, visualizerCanvas.height / 2);
         canvasCtx.stroke();
+
+        // 自身を再度呼び出すことでループを継続する
+        animationFrameId = requestAnimationFrame(drawWaveform);
     }
 
     // ★★★ 歪みの方式をtanh関数に戻す ★★★
@@ -452,6 +542,146 @@
         }
         return curve;
     }
+
+// ★★★ オシレーターコントロールのイベントリスナー ★★★
+    const oscPowerSwitch = document.getElementById('osc-power-switch');
+    const oscControls = document.getElementById('osc-controls');
+    const oscTypeButtons = document.querySelectorAll('.osc-type');
+    const oscFrequencySlider = document.getElementById('osc-frequency-slider');
+    const oscVolumeSlider = document.getElementById('osc-volume-slider');
+
+    oscPowerSwitch.addEventListener('click', () => {
+        // メイン電源がONの時だけ動作
+        if (!isPowerOn) return;
+
+        isOscOn = !isOscOn;
+        if (isOscOn) {
+            oscPowerSwitch.textContent = 'OSC ON';
+            oscPowerSwitch.classList.add('on'); // メイン電源と同じスタイルを適用
+            oscControls.style.display = 'block';
+            // ONにした瞬間のボリュームをスライダーの値に設定
+            oscillatorGainNode.gain.setTargetAtTime(parseFloat(oscVolumeSlider.value), audioContext.currentTime, 0.01);
+        } else {
+            oscPowerSwitch.textContent = 'OSC OFF';
+            oscPowerSwitch.classList.remove('on');
+            oscControls.style.display = 'none';
+            // OFFにしたら音量を0にする
+            oscillatorGainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.01);
+        }
+    });
+
+    // オシレーター波形タイプの切り替え
+    oscTypeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            if (oscillatorNode && isOscOn) {
+                oscTypeButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                oscillatorNode.type = button.dataset.type;
+            }
+        });
+    });
+
+    // オシレーター周波数の変更
+    oscFrequencySlider.addEventListener('input', (e) => {
+        if (oscillatorNode) {
+            oscillatorNode.frequency.setTargetAtTime(parseFloat(e.target.value), audioContext.currentTime, 0.01);
+        }
+    });
+
+    // オシレーター音量の変更
+    oscVolumeSlider.addEventListener('input', (e) => {
+        // オシレーターがONの時だけボリューム変更を適用
+        if (oscillatorNode && isOscOn) {
+            oscillatorGainNode.gain.setTargetAtTime(parseFloat(e.target.value), audioContext.currentTime, 0.01);
+        }
+    });
+
+    // ★★★ LFOコントロールのイベントリスナー ★★★
+    const lfoRateSlider = document.getElementById('lfo-rate-slider');
+    const lfoDepthSlider = document.getElementById('lfo-depth-slider');
+    const lfoTypeButtons = document.querySelectorAll('.lfo-type');
+    const lfoTargetButtons = document.querySelectorAll('.lfo-target');
+
+    // LFOの速さ(Rate)を変更
+    lfoRateSlider.addEventListener('input', (e) => {
+        if (lfoNode) {
+            lfoNode.frequency.value = parseFloat(e.target.value);
+        }
+    });
+
+    // LFOの深さ(Depth)を変更
+    lfoDepthSlider.addEventListener('input', (e) => {
+        if (lfoDepthNode) {
+            lfoDepthNode.gain.value = parseFloat(e.target.value);
+        }
+    });
+
+    // LFOの波形タイプを変更
+    lfoTypeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            if (lfoNode) {
+                lfoTypeButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                lfoNode.type = button.dataset.type;
+            }
+        });
+    });
+
+    // LFOのターゲットを変更
+    lfoTargetButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // メイン電源が入っていない場合は何もしない
+            if (!isPowerOn || !lfoDepthNode) return;
+
+            // まず、すべての接続を解除
+            lfoDepthNode.disconnect();
+
+            // ターゲットボタンの見た目を更新
+            lfoTargetButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            const newTarget = button.dataset.target;
+            currentLfoTarget = newTarget;
+
+            // ターゲットに応じて接続先を切り替え
+            if (newTarget === 'filterFrequency') {
+                lfoDepthNode.connect(filterNode.frequency);
+                lfoDepthSlider.max = 5000; // Depthスライダーの最大値を調整
+            } else if (newTarget === 'oscFrequency') {
+                lfoDepthNode.connect(oscillatorNode.frequency);
+                lfoDepthSlider.max = 1000; // Depthスライダーの最大値を調整
+            } else {
+                // 'none' の場合はDepthを0にしておく
+                lfoDepthSlider.value = 0;
+                lfoDepthNode.gain.value = 0;
+            }
+        });
+    });
+
+// ★★★ ビジュアライザーON/OFFのイベントリスナー ★★★
+    const visualizerToggle = document.getElementById('visualizer-toggle');
+
+    visualizerToggle.addEventListener('click', () => {
+        isVisualizerOn = !isVisualizerOn;
+
+        if (isVisualizerOn) {
+            visualizerToggle.textContent = 'ON';
+            visualizerToggle.classList.add('active');
+            // 描画開始はメイン電源がONの時だけ
+            if (isPowerOn) {
+                drawWaveform();
+            }
+        } else {
+            visualizerToggle.textContent = 'OFF';
+            visualizerToggle.classList.remove('active');
+            // 描画停止と画面クリアは、電源の状態に関係なく実行する
+            cancelAnimationFrame(animationFrameId);
+            setTimeout(() => {
+                canvasCtx.fillStyle = '#000000';
+                canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+            }, 50);
+        }
+    });
 
     // ★★★ 録音機能のロジック ★★★
     const recordButton = document.getElementById('record-button');
@@ -521,6 +751,7 @@
         recordButton.textContent = 'RECORD';
         recordButton.classList.remove('recording');
     }
+    
 
 </script>
 
