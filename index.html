@@ -128,12 +128,66 @@
             background-color: #777;
         }    
 
+/* === シーケンサーのスタイル === */
+        .step-button {
+            width: 100%;
+            height: 30px;
+            border: 1px solid #777;
+            background-color: #444;
+            transition: background-color 0.1s;
+        }
+        .step-button.active {
+            background-color: #ff8c00; /* ONの状態 */
+        }
+        .step-button.playing {
+            border-color: #fff;
+            box-shadow: 0 0 5px #fff; /* 再生中のステップを光らせる */
+        }
+
+        /* === トースト通知のスタイル === */
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #222;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+            pointer-events: none; /* 通知が表示中でも下の要素を操作可能にする */
+        }
+        #notification.show {
+            opacity: 1;
+            bottom: 30px;
+        }
+
     </style>
 </head>
 <body>
 
     <div id="noise-machine">
         <h1>NOISE MACHINE</h1>
+
+                <div class="control" id="preset-section" style="background-color: #222; padding: 10px; border-radius: 5px;">
+            <label style="font-size: 1.1em; margin-bottom: 10px;">PRESETS</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="preset-select" style="flex-grow: 1; background-color: #555; color: white; border: 1px solid #777;"></select>
+                <button id="preset-load" class="filter-type">LOAD</button>
+                <button id="preset-delete" class="filter-type" style="background-color: #d9534f;">DELETE</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                 <button id="preset-export" style="width: 50%; background-color: #f0ad4e; color: white; border:none; padding: 10px; border-radius: 4px; cursor: pointer;">EXPORT ALL</button>
+                 <button id="preset-import" style="width: 50%; background-color: #5bc0de; color: white; border:none; padding: 10px; border-radius: 4px; cursor: pointer;">IMPORT</button>
+                 <input type="file" id="preset-file-input" accept=".json" style="display: none;">
+            </div>
+                <button id="preset-save" style="width: 100%; background-color: #5cb85c; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">SAVE CURRENT SETTINGS</button>
+            </div>
+        </div>
 
     <div class="control">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
@@ -186,6 +240,14 @@
                 <input type="range" id="attack-slider" min="0.01" max="2" value="0.01" step="0.01">
                 <label for="decay-slider" style="margin-top: 10px;">DECAY</label>
                 <input type="range" id="decay-slider" min="0.01" max="3" value="1" step="0.01">
+            </div>
+            <div style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
+                <label for="pitch-start-slider">PITCH START (Hz)</label>
+                <input type="range" id="pitch-start-slider" min="100" max="2000" value="880" step="10">
+                <label for="pitch-end-slider" style="margin-top: 10px;">PITCH END (Hz)</label>
+                <input type="range" id="pitch-end-slider" min="20" max="500" value="50" step="5">
+                <label for="pitch-decay-slider" style="margin-top: 10px;">PITCH DECAY (s)</label>
+                <input type="range" id="pitch-decay-slider" min="0.01" max="1" value="0.1" step="0.01">
             </div>
         </div>
 
@@ -247,6 +309,34 @@
             <button id="record-button">RECORD</button>
         </div>
         <div id="recording-results">
+        </div>
+        <div class="control" id="sequencer-section" style="background-color: #222; padding: 10px; border-radius: 5px;">
+            <label style="font-size: 1.1em; margin-bottom: 10px;">STEP SEQUENCER</label>
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <button id="sequencer-start-stop" style="padding: 10px 20px; font-weight: bold; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">START</button>
+                <div style="flex-grow: 1;">
+                    <label for="bpm-slider" style="margin-bottom: 5px;">BPM: <span id="bpm-display">120</span></label>
+                    <input type="range" id="bpm-slider" min="40" max="240" value="120" step="1">
+                </div>
+            </div>
+            <div id="step-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; row-gap: 10px;">
+                <button class="step-button" data-step="0"></button>
+                <button class="step-button" data-step="1"></button>
+                <button class="step-button" data-step="2"></button>
+                <button class="step-button" data-step="3"></button>
+                <button class="step-button" data-step="4"></button>
+                <button class="step-button" data-step="5"></button>
+                <button class="step-button" data-step="6"></button>
+                <button class="step-button" data-step="7"></button>
+                <button class="step-button" data-step="8"></button>
+                <button class="step-button" data-step="9"></button>
+                <button class="step-button" data-step="10"></button>
+                <button class="step-button" data-step="11"></button>
+                <button class="step-button" data-step="12"></button>
+                <button class="step-button" data-step="13"></button>
+                <button class="step-button" data-step="14"></button>
+                <button class="step-button" data-step="15"></button>
+            </div>
         </div>
     </div>
 
@@ -752,8 +842,422 @@ function setupAudio() {
         recordButton.classList.remove('recording');
     }
     
+    // ★★★ HITボタンのイベントリスナー (ピッチ調整機能付き) ★★★
+    const hitButton = document.getElementById('hit-button');
+    const attackSlider = document.getElementById('attack-slider');
+    const decaySlider = document.getElementById('decay-slider');
+    const pitchStartSlider = document.getElementById('pitch-start-slider');
+    const pitchEndSlider = document.getElementById('pitch-end-slider');
+    const pitchDecaySlider = document.getElementById('pitch-decay-slider');
+
+    hitButton.addEventListener('click', () => {
+        if (!isPowerOn || !audioContext) return;
+
+        const now = audioContext.currentTime;
+        const masterVolume = parseFloat(volumeSlider.value);
+
+        const hitOsc = audioContext.createOscillator();
+        hitOsc.type = 'sine';
+
+        const hitEnvelope = audioContext.createGain();
+
+        hitOsc.connect(hitEnvelope);
+        hitEnvelope.connect(limiterNode);
+
+        // 4. 音程の変化（ピッチエンベロープ）をスライダーの値から設定する
+        const pitchStart = parseFloat(pitchStartSlider.value);
+        const pitchEnd = parseFloat(pitchEndSlider.value);
+        const pitchDecay = parseFloat(pitchDecaySlider.value);
+
+        hitOsc.frequency.setValueAtTime(pitchStart, now);
+        hitOsc.frequency.exponentialRampToValueAtTime(pitchEnd, now + pitchDecay);
+
+        // 5. 音量の変化（アンプエンベロープ）を設定する
+        const attackTime = parseFloat(attackSlider.value);
+        const decayTime = parseFloat(decaySlider.value);
+        hitEnvelope.gain.cancelScheduledValues(now);
+        hitEnvelope.gain.setValueAtTime(0, now);
+        hitEnvelope.gain.linearRampToValueAtTime(masterVolume, now + attackTime);
+        hitEnvelope.gain.linearRampToValueAtTime(0, now + attackTime + decayTime);
+
+        // 6. 発音をスケジュールする
+        hitOsc.start(now);
+        const stopTime = Math.max(pitchDecay, attackTime + decayTime) + 0.1; // ピッチと音量のエンベロープが長い方に合わせる
+        hitOsc.stop(now + stopTime);
+    });
+
+    // ★★★ プリセット機能のロジック ★★★
+    const presetSelect = document.getElementById('preset-select');
+    const presetLoadBtn = document.getElementById('preset-load');
+    const presetSaveBtn = document.getElementById('preset-save');
+    const presetDeleteBtn = document.getElementById('preset-delete');
+    const PRESET_STORAGE_KEY = 'noiseMachinePresets';
+
+    // --- 1. 保存されているプリセットを読み込んでドロップダウンを更新する関数 ---
+    function updatePresetList() {
+        const presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+        presetSelect.innerHTML = ''; // ドロップダウンを一旦空にする
+
+        presets.forEach(preset => {
+            const option = document.createElement('option');
+            option.value = preset.name;
+            option.textContent = preset.name;
+            presetSelect.appendChild(option);
+        });
+    }
+
+
+
+    // --- 3. ページ読み込み時に一度リストを更新する ---
+    updatePresetList();
+
+    // ★★★ プリセット機能のロジック（LOAD & DELETE） ★★★
+
+    // --- 4. プリセットを適用する中心的な関数 ---
+    function applyPreset(settings) {
+        if (!settings) return;
+
+        // --- スライダーの値をUIとWeb Audio APIの両方に適用 ---
+        const updateSlider = (sliderId, value, audioNode, paramName) => {
+            const slider = document.getElementById(sliderId);
+            if (slider) slider.value = value;
+            if (audioNode) {
+                // 'gain' や 'frequency' など、AudioParamオブジェクトのプロパティに値を設定
+                if (audioNode[paramName]) {
+                    audioNode[paramName].value = parseFloat(value);
+                } else {
+                    audioNode.value = parseFloat(value);
+                }
+            }
+        };
+        
+        updateSlider('volume-slider', settings.volume, gainNode.gain);
+        updateSlider('frequency-slider', settings.frequency, filterNode.frequency);
+        updateSlider('q-slider', settings.resonance, filterNode.Q);
+        updateSlider('feedback-slider', settings.feedback, feedbackGainNode.gain);
+        updateSlider('distortion-slider', settings.distortion, null); // Distortionは特殊なので後で
+        updateSlider('osc-frequency-slider', settings.oscFreq, oscillatorNode.frequency);
+        updateSlider('osc-volume-slider', settings.oscVol, oscillatorGainNode.gain);
+        updateSlider('lfo-rate-slider', settings.lfoRate, lfoNode.frequency);
+        updateSlider('lfo-depth-slider', settings.lfoDepth, lfoDepthNode.gain);
+        updateSlider('attack-slider', settings.attack, null);
+        updateSlider('decay-slider', settings.decay, null);
+        
+        // Distortionスライダーの特殊処理
+        const distortionSliderEl = document.getElementById('distortion-slider');
+        if(distortionSliderEl) {
+            distortionSliderEl.value = settings.distortion;
+            // 既存のイベントリスナーを発火させてドライブとカーブを更新するのが最も確実
+            distortionSliderEl.dispatchEvent(new Event('input'));
+        }
+
+
+        // --- ボタンが押されたかのように振る舞わせ、UIと処理を同時に更新 ---
+        const updateButtons = (selector, savedType) => {
+            if (!savedType) return;
+            document.querySelectorAll(selector).forEach(btn => {
+                if (btn.dataset.type === savedType) {
+                    if (!btn.classList.contains('active')) btn.click();
+                } else {
+                    if (btn.classList.contains('active')) btn.click(); // NOTE: この方法は単純なトグルには不向きな場合がある
+                }
+            });
+        };
+        
+        // NOTE: 上記のupdateButtonsは理想的ではないため、より確実な方法に変更します。
+        const clickButton = (selector, savedType) => {
+             if (!savedType) return;
+             const targetButton = document.querySelector(`${selector}[data-type="${savedType}"]`);
+             if (targetButton && !targetButton.classList.contains('active')) {
+                 targetButton.click();
+             }
+        };
+        
+        clickButton('.noise-type', settings.noiseType);
+        clickButton('.filter-type', settings.filterType);
+        clickButton('.osc-type', settings.oscType);
+        clickButton('.lfo-target', settings.lfoTarget);
+        clickButton('.lfo-type', settings.lfoType);
+
+        // ON/OFFスイッチの処理
+        const oscSwitch = document.getElementById('osc-power-switch');
+        if (oscSwitch && oscSwitch.classList.contains('on') !== settings.oscOn) {
+            oscSwitch.click();
+        }
+    }
+
+// --- 5. 「LOAD」ボタンが押された時の処理 ---
+    presetLoadBtn.addEventListener('click', () => {
+        const presetName = presetSelect.value;
+        if (!presetName) {
+            showNotification('読み込むプリセットが選択されていません。');
+            return;
+        }
+
+        const presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+        const preset = presets.find(p => p.name === presetName);
+
+        if (preset) {
+            applyPreset(preset.values);
+            showNotification(`「${presetName}」を読み込みました。`);
+        } else {
+            showNotification('エラー：プリセットが見つかりません。');
+        }
+    });
+
+// --- 6. 「DELETE」ボタンが押された時の処理 ---
+    presetDeleteBtn.addEventListener('click', () => {
+        const presetName = presetSelect.value;
+        if (!presetName) {
+            showNotification('削除するプリセットが選択されていません。');
+            return;
+        }
+
+        if (confirm(`本当に「${presetName}」を削除しますか？この操作は元に戻せません。`)) {
+            let presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+            presets = presets.filter(p => p.name !== presetName);
+            localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+            updatePresetList(); // リストを更新
+            showNotification(`「${presetName}」を削除しました。`);
+        }
+    });
+
+// ★★★ プリセット機能のロジック（EXPORT） ★★★
+    const presetExportBtn = document.getElementById('preset-export');
+
+presetExportBtn.addEventListener('click', () => {
+        const presetsJSON = localStorage.getItem(PRESET_STORAGE_KEY);
+        const presets = JSON.parse(presetsJSON) || [];
+
+        if (presets.length === 0) {
+            showNotification('書き出すプリセットがありません。');
+            return;
+        }
+
+        const blob = new Blob([presetsJSON], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `noise-machine-presets-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+// ★★★ プリセット機能のロジック（IMPORT） ★★★
+    const presetImportBtn = document.getElementById('preset-import');
+    const presetFileInput = document.getElementById('preset-file-input');
+
+    // 1. 「IMPORT」ボタンが押されたら、隠れているファイル選択ダイアログを開く
+    presetImportBtn.addEventListener('click', () => {
+        presetFileInput.click(); // ファイル入力をプログラム的にクリック
+    });
+
+ // 2. ファイルが選択された時の処理
+    presetFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            try {
+                const importedPresets = JSON.parse(e.target.result);
+                if (!Array.isArray(importedPresets)) {
+                    throw new Error('プリセットファイルは期待された形式ではありません。');
+                }
+                let currentPresets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+                let importedCount = 0;
+                let overwrittenCount = 0;
+                importedPresets.forEach(importedPreset => {
+                    if (importedPreset && importedPreset.name && importedPreset.values) {
+                        const existingIndex = currentPresets.findIndex(p => p.name === importedPreset.name);
+                        if (existingIndex > -1) {
+                            currentPresets[existingIndex] = importedPreset;
+                            overwrittenCount++;
+                        } else {
+                            currentPresets.push(importedPreset);
+                            importedCount++;
+                        }
+                    }
+                });
+                localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(currentPresets));
+                updatePresetList();
+                showNotification(`${importedCount}個のプリセットを新しく追加し、${overwrittenCount}個のプリセットを上書きしました。`);
+            } catch (error) {
+                showNotification('ファイルの読み込みに失敗しました。有効なプリセットファイルではありません。');
+            } finally {
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // ★★★ シーケンサー機能のロジック ★★★
+    const startStopBtn = document.getElementById('sequencer-start-stop');
+    const bpmSlider = document.getElementById('bpm-slider');
+    const bpmDisplay = document.getElementById('bpm-display');
+    const stepButtons = document.querySelectorAll('.step-button');
+
+    let isSequencerPlaying = false;
+    let currentStep = 0;
+    let bpm = 120;
+    let sequencerIntervalId = null;
+
+    // --- ステップボタンのON/OFFを切り替える処理 ---
+    stepButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            button.classList.toggle('active');
+        });
+    });
+
+    // --- BPMスライダーを動かした時の処理 ---
+    bpmSlider.addEventListener('input', (event) => {
+        bpm = parseInt(event.target.value);
+        bpmDisplay.textContent = bpm;
+        // もし再生中なら、一度止めて新しいテンポで再開する
+        if (isSequencerPlaying) {
+            stopSequencer();
+            startSequencer();
+        }
+    });
+
+// --- シーケンサーのメインループ ---
+    function sequencerLoop() {
+        // 1. 前のステップのハイライトを消す
+        const prevStep = (currentStep === 0) ? 15 : currentStep - 1;
+        stepButtons[prevStep].classList.remove('playing');
+
+        // 2. 現在のステップのボタンを取得し、ハイライトする
+        const currentStepButton = stepButtons[currentStep];
+        currentStepButton.classList.add('playing');
+
+        // 3. 現在のステップがON（activeクラスを持つ）なら、音を鳴らす
+        if (currentStepButton.classList.contains('active')) {
+            // HITボタンのクリック処理をプログラム的に呼び出す
+            hitButton.click();
+        }
+
+        // 4. 次のステップへ
+        currentStep = (currentStep + 1) % 16;
+    }
+
+    // --- シーケンサーを開始する関数 ---
+    function startSequencer() {
+        // 1分あたりの拍数(BPM)から、16分音符1つあたりの時間を計算 (ミリ秒)
+        const stepTime = 60000 / bpm / 4;
+        
+        sequencerIntervalId = setInterval(sequencerLoop, stepTime);
+        startStopBtn.textContent = 'STOP';
+        startStopBtn.style.backgroundColor = '#d9534f'; // 赤色に変更
+        isSequencerPlaying = true;
+    }
+
+    // --- シーケンサーを停止する関数 ---
+    function stopSequencer() {
+        clearInterval(sequencerIntervalId);
+        sequencerIntervalId = null;
+        startStopBtn.textContent = 'START';
+        startStopBtn.style.backgroundColor = '#4CAF50'; // 緑色に戻す
+        isSequencerPlaying = false;
+        currentStep = 0; // 停止したらステップをリセット
+
+        // ★追加: 全てのステップのハイライトを消す
+        stepButtons.forEach(button => button.classList.remove('playing'));
+    }
+
+// --- START/STOPボタンが押された時の処理 ---
+    startStopBtn.addEventListener('click', () => {
+        if (isSequencerPlaying) {
+            stopSequencer();
+        } else {
+            // 電源がONの時だけシーケンサーを開始
+            if (isPowerOn) {
+                startSequencer();
+            } else {
+                showNotification('まず本体のPOWERをONにしてください。');
+            }
+        }
+    });
+
+    // ★★★ 新しい通知機能 ★★★
+
+function showNotification(message) {
+        const notification = document.getElementById('notification');
+        if (!notification) return; // もし要素がなければ何もしない
+
+        // 以前のタイマーが残っていればクリア
+        if (notification.timeoutId) {
+            clearTimeout(notification.timeoutId);
+        }
+
+        notification.textContent = message;
+        notification.classList.add('show');
+
+        // 2秒後に通知を消すタイマーを設定
+        notification.timeoutId = setTimeout(() => {
+            notification.classList.remove('show');
+        }, 2000);
+    }
+
+    // --- 「SAVE」ボタンのイベントリスナーを上書き ---
+    presetSaveBtn.addEventListener('click', () => {
+        const presetName = prompt('プリセット名を入力してください：', 'My Awesome Noise');
+        if (!presetName) return;
+        const settings = { noiseType: document.querySelector('.noise-type.active')?.dataset.type, volume: document.getElementById('volume-slider').value, oscOn: document.getElementById('osc-power-switch').classList.contains('on'), oscType: document.querySelector('.osc-type.active')?.dataset.type, oscFreq: document.getElementById('osc-frequency-slider').value, oscVol: document.getElementById('osc-volume-slider').value, filterType: document.querySelector('.filter-type.active')?.dataset.type, frequency: document.getElementById('frequency-slider').value, resonance: document.getElementById('q-slider').value, lfoTarget: document.querySelector('.lfo-target.active')?.dataset.type, lfoRate: document.getElementById('lfo-rate-slider').value, lfoDepth: document.getElementById('lfo-depth-slider').value, lfoType: document.querySelector('.lfo-type.active')?.dataset.type, feedback: document.getElementById('feedback-slider').value, distortion: document.getElementById('distortion-slider').value, attack: document.getElementById('attack-slider').value, decay: document.getElementById('decay-slider').value };
+        const newPreset = { name: presetName, values: settings };
+        const presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+        const existingIndex = presets.findIndex(p => p.name === presetName);
+        if (existingIndex > -1) {
+            if (confirm(`「${presetName}」は既に存在します。上書きしますか？`)) {
+                presets[existingIndex] = newPreset;
+            } else {
+                return;
+            }
+        } else {
+            presets.push(newPreset);
+        }
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+        updatePresetList();
+        presetSelect.value = presetName;
+        showNotification(`「${presetName}」を保存しました！`); // alertを置き換え
+    });
+
+    // --- 「LOAD」ボタンのイベントリスナーを上書き ---
+    presetLoadBtn.addEventListener('click', () => {
+        const presetName = presetSelect.value;
+        if (!presetName) {
+            showNotification('読み込むプリセットが選択されていません。'); // alertを置き換え
+            return;
+        }
+        const presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+        const preset = presets.find(p => p.name === presetName);
+        if (preset) {
+            applyPreset(preset.values);
+            showNotification(`「${presetName}」を読み込みました。`); // alertを置き換え
+        } else {
+            showNotification('エラー：プリセットが見つかりません。'); // alertを置き換え
+        }
+    });
+
+    // --- 「DELETE」ボタンのイベントリスナーを上書き ---
+    presetDeleteBtn.addEventListener('click', () => {
+        const presetName = presetSelect.value;
+        if (!presetName) {
+            showNotification('削除するプリセットが選択されていません。'); // alertを置き換え
+            return;
+        }
+        if (confirm(`本当に「${presetName}」を削除しますか？この操作は元に戻せません。`)) {
+            let presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+            presets = presets.filter(p => p.name !== presetName);
+            localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+            updatePresetList();
+            showNotification(`「${presetName}」を削除しました。`); // alertを置き換え
+        }
+    });
 
 </script>
-
+<div id="notification"></div>
 </body>
 </html>
