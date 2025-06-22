@@ -165,6 +165,58 @@
             bottom: 30px;
         }
 
+        /* ★追加: オシレーター種類ボタンのスタイル */
+#osc-type-buttons {
+    display: flex;
+    justify-content: space-between;
+}
+button.osc-type {
+    width: 32%;
+    padding: 10px 5px;
+    font-size: 0.9em;
+    background-color: #555;
+}
+button.osc-type.active {
+    background-color: #77aaff; /* オシレーターがONの時は青系の色にしてみます */
+    color: #111;
+}
+
+/* ★追加: LFOターゲットボタンのスタイル */
+button.lfo-target {
+    width: 32%;
+    padding: 10px 5px;
+    font-size: 0.9em;
+    background-color: #555;
+    color: white;
+    border: none;
+    border-radius: 4px; /* 角を少し丸める */
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+button.lfo-target.active {
+    background-color: #f0ad4e; /* ターゲット選択中はオレンジ色に */
+    color: #111;
+    font-weight: bold;
+}
+
+/* ★追加: LFOタイプボタンのスタイル */
+button.lfo-type {
+    width: 32%;
+    padding: 10px 5px;
+    font-size: 0.9em;
+    background-color: #555;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+button.lfo-type.active {
+    background-color: #a777ff; /* 元のnoise-typeなどと同じ紫色に */
+    color: #111;
+    font-weight: bold;
+}
+
     </style>
 </head>
 <body>
@@ -216,10 +268,7 @@
             <div id="osc-controls" style="margin-top: 15px; display: none;">
                 <label>OSC TYPE</label>
                 <div id="osc-type-buttons" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <button class="osc-type noise-type active" data-type="sawtooth">SAW</button>
-                    <button class="osc-type noise-type" data-type="square">SQUARE</button>
-                    <button class="osc-type noise-type" data-type="triangle">TRIANGLE</button>
-                </div>
+                    <button class="osc-type active" data-type="sawtooth">SAW</button> <button class="osc-type" data-type="square">SQUARE</button> <button class="osc-type" data-type="triangle">TRIANGLE</button> </div>
                 <label for="osc-frequency-slider">FREQUENCY (20-2000Hz)</label>
                 <input type="range" id="osc-frequency-slider" min="20" max="2000" value="440" step="1">
                 <label for="osc-volume-slider" style="margin-top: 10px;">VOLUME</label>
@@ -242,8 +291,8 @@
                 <input type="range" id="decay-slider" min="0.01" max="3" value="1" step="0.01">
             </div>
             <div style="margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
-                <label for="pitch-start-slider">PITCH START (Hz)</label>
-                <input type="range" id="pitch-start-slider" min="100" max="2000" value="880" step="10">
+                <label for="pitch-start-slider">PITCH START (Hz): <span id="pitch-start-display">880</span></label>
+<input type="range" id="pitch-start-slider" min="100" max="2000" value="880" step="10">
                 <label for="pitch-end-slider" style="margin-top: 10px;">PITCH END (Hz)</label>
                 <input type="range" id="pitch-end-slider" min="20" max="500" value="50" step="5">
                 <label for="pitch-decay-slider" style="margin-top: 10px;">PITCH DECAY (s)</label>
@@ -278,9 +327,9 @@
             <div style="margin-top: 10px;">
                 <label>TARGET</label>
                 <div id="lfo-target-buttons" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <button class="lfo-target filter-type active" data-target="none">OFF</button>
-                    <button class="lfo-target filter-type" data-target="filterFrequency">FILTER FREQ</button>
-                    <button class="lfo-target filter-type" data-target="oscFrequency">OSC FREQ</button>
+                    <button class="lfo-target active" data-target="none">OFF</button>
+                    <button class="lfo-target" data-target="filterFrequency">FILTER FREQ</button>
+                    <button class="lfo-target" data-target="oscFrequency">OSC FREQ</button>
                 </div>
                 <label for="lfo-rate-slider">RATE (0.1 - 20 Hz)</label>
                 <input type="range" id="lfo-rate-slider" min="0.1" max="20" value="5" step="0.1">
@@ -288,9 +337,9 @@
                 <input type="range" id="lfo-depth-slider" min="0" max="5000" value="0" step="1">
                 <label style="margin-top: 10px;">LFO TYPE</label>
                 <div id="lfo-type-buttons" style="display: flex; justify-content: space-between; margin-top: 5px;">
-                    <button class="lfo-type noise-type active" data-type="sine">SINE</button>
-                    <button class="lfo-type noise-type" data-type="square">SQUARE</button>
-                    <button class="lfo-type noise-type" data-type="sawtooth">SAW</button>
+                    <button class="lfo-type active" data-type="sine">SINE</button>
+                    <button class="lfo-type" data-type="square">SQUARE</button>
+                    <button class="lfo-type" data-type="sawtooth">SAW</button>
                 </div>
             </div>
         </div>
@@ -1094,6 +1143,14 @@ presetExportBtn.addEventListener('click', () => {
         reader.readAsText(file);
     });
 
+    // ★★★ スライダーの数値を表示する機能 ★★★
+    //const pitchStartSlider = document.getElementById('pitch-start-slider');
+    const pitchStartDisplay = document.getElementById('pitch-start-display');
+
+    pitchStartSlider.addEventListener('input', (event) => {
+    pitchStartDisplay.textContent = event.target.value;
+    });
+
     // ★★★ シーケンサー機能のロジック ★★★
     const startStopBtn = document.getElementById('sequencer-start-stop');
     const bpmSlider = document.getElementById('bpm-slider');
@@ -1205,7 +1262,10 @@ function showNotification(message) {
     presetSaveBtn.addEventListener('click', () => {
         const presetName = prompt('プリセット名を入力してください：', 'My Awesome Noise');
         if (!presetName) return;
-        const settings = { noiseType: document.querySelector('.noise-type.active')?.dataset.type, volume: document.getElementById('volume-slider').value, oscOn: document.getElementById('osc-power-switch').classList.contains('on'), oscType: document.querySelector('.osc-type.active')?.dataset.type, oscFreq: document.getElementById('osc-frequency-slider').value, oscVol: document.getElementById('osc-volume-slider').value, filterType: document.querySelector('.filter-type.active')?.dataset.type, frequency: document.getElementById('frequency-slider').value, resonance: document.getElementById('q-slider').value, lfoTarget: document.querySelector('.lfo-target.active')?.dataset.type, lfoRate: document.getElementById('lfo-rate-slider').value, lfoDepth: document.getElementById('lfo-depth-slider').value, lfoType: document.querySelector('.lfo-type.active')?.dataset.type, feedback: document.getElementById('feedback-slider').value, distortion: document.getElementById('distortion-slider').value, attack: document.getElementById('attack-slider').value, decay: document.getElementById('decay-slider').value };
+        const settings = { noiseType: document.querySelector('.noise-type.active')?.dataset.type, volume: document.getElementById('volume-slider').value, oscOn: document.getElementById('osc-power-switch').classList.contains('on'), oscType: document.querySelector('.osc-type.active')?.dataset.type, oscFreq: document.getElementById('osc-frequency-slider').value, oscVol: document.getElementById('osc-volume-slider').value, filterType: document.querySelector('.filter-type.active')?.dataset.type, frequency: document.getElementById('frequency-slider').value, resonance: document.getElementById('q-slider').value, lfoTarget: document.querySelector('.lfo-target.active')?.dataset.type, lfoRate: document.getElementById('lfo-rate-slider').value, lfoDepth: document.getElementById('lfo-depth-slider').value, lfoType: document.querySelector('.lfo-type.active')?.dataset.type, feedback: document.getElementById('feedback-slider').value, distortion: document.getElementById('distortion-slider').value, attack: document.getElementById('attack-slider').value, decay: document.getElementById('decay-slider').value,pitchStart: document.getElementById('pitch-start-slider').value,
+    pitchEnd: document.getElementById('pitch-end-slider').value,
+    pitchDecay: document.getElementById('pitch-decay-slider').value };
+        console.log(JSON.stringify(settings, null, 2)); // ★追加: 設定オブジェクトをコンソールに見やすく表示
         const newPreset = { name: presetName, values: settings };
         const presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
         const existingIndex = presets.findIndex(p => p.name === presetName);
